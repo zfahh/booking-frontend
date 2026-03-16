@@ -3,17 +3,22 @@
 import { useState, useEffect } from 'react'
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
-import { getBookings, type Booking } from '@/services/bookings'
+import { getAuditLogs, type AuditLog } from '@/services/audit-logs'
 
-const STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  active: { label: 'Booked', className: 'text-emerald-600' },
-  cancelled: { label: 'Cancelled', className: 'text-red-500' },
+const ACTION_LABEL: Record<string, { label: string; className: string }> = {
+  booking_created: { label: 'Booking', className: 'text-emerald-600' },
+  booking_cancelled: { label: 'Booking Cancelled', className: 'text-red-500' },
+  concert_updated: { label: 'Concert updated', className: 'text-blue-600' },
+  concert_deleted: { label: 'Concert deleted', className: 'text-orange-500' },
+  concert_created: { label: 'Concert created', className: 'text-emerald-600' },
 }
 
 const PAGE_SIZE = 20
 
-export default function UserHistoryPage() {
-  const [bookings, setBookings] = useState<Booking[]>([])
+export default function AdminHistoryPage() {
+  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
 
@@ -21,8 +26,10 @@ export default function UserHistoryPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const data = await getBookings()
-        setBookings(data)
+        const { data, meta } = await getAuditLogs(page, PAGE_SIZE)
+        setLogs(data)
+        setTotalPages(meta.totalPages)
+        setTotal(meta.total)
       } catch {
         toast.error('Failed to load history')
       } finally {
@@ -30,14 +37,11 @@ export default function UserHistoryPage() {
       }
     }
     fetchData()
-  }, [])
-
-  const totalPages = Math.max(1, Math.ceil(bookings.length / PAGE_SIZE))
-  const paged = bookings.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  }, [page])
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">My Booking History</h2>
+      <h2 className="text-2xl font-bold text-slate-800 mb-6">History</h2>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {loading ? (
@@ -51,27 +55,25 @@ export default function UserHistoryPage() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-4 py-3 font-semibold text-slate-600">#</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Concert</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Booked At</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Cancelled At</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Action by</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {paged.length === 0 ? (
+                  {logs.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-slate-400">No bookings found</td>
+                      <td colSpan={4} className="px-4 py-10 text-center text-slate-400">No records found</td>
                     </tr>
                   ) : (
-                    paged.map((booking, index) => {
-                      const status = STATUS_LABEL[booking.status] ?? { label: booking.status, className: 'text-slate-700' }
+                    logs.map((log, index) => {
+                      const action = ACTION_LABEL[log.action] ?? { label: log.action, className: 'text-slate-700' }
                       return (
-                        <tr key={booking.id} className="hover:bg-slate-50 transition-colors">
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-3 text-slate-400">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                          <td className="px-4 py-3 font-medium text-slate-800">{booking.concert.name}</td>
-                          <td className={`px-4 py-3 font-medium ${status.className}`}>{status.label}</td>
-                          <td className="px-4 py-3 text-slate-500">{booking.booked_at ? new Date(booking.booked_at).toLocaleString() : '—'}</td>
-                          <td className="px-4 py-3 text-slate-500">{booking.cancelled_at ? new Date(booking.cancelled_at).toLocaleString() : '—'}</td>
+                          <td className={`px-4 py-3 font-medium ${action.className}`}>{action.label}</td>
+                          <td className="px-4 py-3 text-blue-600 font-medium">{log.user.username}</td>
+                          <td className="px-4 py-3 text-slate-500">{new Date(log.created_at).toLocaleString()}</td>
                         </tr>
                       )
                     })
@@ -83,10 +85,7 @@ export default function UserHistoryPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
               <p className="text-xs text-slate-400">
-                {bookings.length === 0
-                  ? '0'
-                  : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, bookings.length)}`}{' '}
-                of {bookings.length}
+                {total === 0 ? '0' : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)}`} of {total}
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -102,7 +101,7 @@ export default function UserHistoryPage() {
                     onClick={() => setPage(p)}
                     className={`min-w-[30px] h-[30px] rounded-lg text-xs font-medium transition-colors ${
                       p === page
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-blue-600 text-white'
                         : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
