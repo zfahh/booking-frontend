@@ -1,36 +1,150 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Concert Booking — Frontend
+
+A role-based concert booking web application built with Next.js, and Tailwind Supports two roles — **Admin** and **User** — with separate interfaces for concert management and ticket booking.
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 20+
+- A running backend API (see backend README)
+
+### Environment Variables
+
+Create a `.env / .env.local` file in the project root:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Replace the value with your backend URL if it differs.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Install & Run
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Install dependencies
+npm install
 
-## Learn More
+# Start development server (port 8080)
+npm run dev
+```
+Open [http://localhost:8080](http://localhost:8080) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+---
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Category | Library / Tool |
+|---|---|
+| Framework | Next.js (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind |
+| HTTP Client | Axios |
+| Notifications | Sonner |
+| Icons | Lucide React |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Admin
+- View statistics: total seats, active bookings, cancellations
+- Browse and delete concerts
+- Create new concerts (name, description, total seats)
+- View paginated audit log history
+
+### User
+- Browse available concerts with seat availability
+- Book a concert (1 active booking per concert)
+- Cancel a booking
+- View personal booking history with status and timestamps
+
+---
+
+## Project Structure
+
+```
+booking-frontend/
+├── app/
+│   ├── (auth)/
+│   │   ├── layout.tsx           # Centered card layout for auth pages
+│   │   ├── page.tsx             # Redirects to /login
+│   │   ├── login/page.tsx       # Login form
+│   │   └── register/page.tsx    # Registration form
+│   ├── (admin)/
+│   │   ├── layout.tsx           # Wraps admin pages with AdminLayout
+│   │   ├── dashboard/page.tsx   # Concert management + stats
+│   │   └── history/page.tsx     # Audit log table (paginated)
+│   ├── (user)/
+│   │   ├── layout.tsx           # Wraps user pages with UserLayout
+│   │   ├── concerts/page.tsx    # Browse and book concerts
+│   │   └── bookings/page.tsx    # Personal booking history (paginated)
+│   ├── layout.tsx               # Root layout (fonts, Toaster)
+│   ├── page.tsx                 # Root redirect based on role cookie
+│   └── globals.css
+├── components/
+│   ├── layouts/
+│   │   ├── AdminLayout.tsx      # Slate sidebar layout for admin
+│   │   ├── AuthLayout.tsx       # Gradient background for auth
+│   │   └── UserLayout.tsx       # Emerald sidebar layout for user
+│   ├── ui/
+│   │   ├── Alert.tsx            # Inline alert (info / success / warning / error)
+│   │   └── AlertDialog.tsx      # Confirmation modal dialog
+│   └── icons/
+│       └── index.tsx            # SVG icon components
+├── lib/
+│   ├── api.ts                   # Axios instance + ApiError class
+│   └── session.ts               # Cookie helpers (setSession / clearSession)
+└── services/
+    ├── auth.ts                  # login, register, switchRole, logout
+    ├── concerts.ts              # getConcerts, createConcert, deleteConcert
+    ├── bookings.ts              # getBookings, getAllBookings, createBooking, deleteBooking
+    └── audit-logs.ts            # getAuditLogs (paginated)
+```
+---
+
+## Routing
+
+| Path | Role | Description |
+|---|---|---|
+| `/` | Any | Redirects to `/dashboard`, `/concerts`, or `/login` based on role cookie |
+| `/login` | Public | Login form |
+| `/register` | Public | Registration form |
+| `/dashboard` | Admin | Concert stats + management |
+| `/history` | Admin | Paginated audit log |
+| `/concerts` | User | Browse and book concerts |
+| `/bookings` | User | Personal booking history |
+
+---
+
+## API Services
+
+### Auth — `services/auth.ts`
+| Function | Method | Endpoint |
+|---|---|---|
+| `login(payload)` | POST | `/auth/login` |
+| `register(payload)` | POST | `/auth/register` |
+| `switchRole()` | PATCH | `/auth/role` |
+| `logout()` | — | Clears cookies |
+
+### Concerts — `services/concerts.ts`
+| Function | Method | Endpoint |
+|---|---|---|
+| `getConcerts()` | GET | `/concerts` |
+| `createConcert(payload)` | POST | `/concerts` |
+| `deleteConcert(id)` | DELETE | `/concerts/:id` |
+
+### Bookings — `services/bookings.ts`
+| Function | Method | Endpoint |
+|---|---|---|
+| `getBookings()` | GET | `/bookings/me` |
+| `getAllBookings()` | GET | `/bookings` |
+| `createBooking(concertId)` | POST | `/bookings` |
+| `deleteBooking(id)` | DELETE | `/bookings/:id` |
+
+### Audit Logs — `services/audit-logs.ts`
+| Function | Method | Endpoint |
+|---|---|---|
+| `getAuditLogs(page, limit)` | GET | `/audit-logs` |
